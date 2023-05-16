@@ -91,4 +91,36 @@ export async function mealsRoutes(app: FastifyInstance) {
       return reply.status(200).send('Refeição deletada!')
     },
   )
+
+  app.get(
+    '/',
+    { preHandler: [checkSessionIdExists] },
+    async (request, reply) => {
+      const { sessionId } = request.cookies
+
+      const meals = await knex('meal').where({ session_id: sessionId }).select()
+
+      return reply.status(200).send({ meals })
+    },
+  )
+
+  app.get(
+    '/:id',
+    { preHandler: [checkSessionIdExists] },
+    async (request, reply) => {
+      const getMealParamsSchema = z.object({
+        id: z.string().uuid(),
+      })
+
+      const { id } = getMealParamsSchema.parse(request.params)
+
+      const { sessionId } = request.cookies
+
+      const meal = await knex('meal')
+        .where({ id, session_id: sessionId })
+        .first()
+
+      return reply.status(200).send({ meal })
+    },
+  )
 }
