@@ -123,4 +123,49 @@ export async function mealsRoutes(app: FastifyInstance) {
       return reply.status(200).send({ meal })
     },
   )
+
+  app.get(
+    '/metrics',
+    {
+      preHandler: [checkSessionIdExists],
+    },
+    async (request) => {
+      const { sessionId } = request.cookies
+
+      const meals = await knex('meal').where({ session_id: sessionId }).select()
+
+      const registeredMeals = meals.length
+
+      const mealsWithinTheDiet = meals.filter(
+        // eslint-disable-next-line eqeqeq
+        (item) => item.isOnTheDiet == true,
+      ).length
+
+      const mealsOffTheDiet = registeredMeals - mealsWithinTheDiet
+
+      const createdDates = meals.map((meal) => meal.created_at.split(' ')[0])
+
+      const counts = createdDates.reduce((acc: any, date) => {
+        acc[date] = acc[date] ? acc[date] + 1 : 1
+        return acc
+      }, [])
+
+      const [bestDayWithinDiet, bestSequenceWithinDiet] = Object.entries(
+        counts,
+      ).reduce(
+        (max: [string, number], [item, count]: any) => {
+          return count > max[1] ? [item, count] : max
+        },
+        ['', 0],
+      )
+
+      return {
+        registeredMeals,
+        mealsWithinTheDiet,
+        mealsOffTheDiet,
+        bestDayWithinDiet,
+        bestSequenceWithinDiet,
+      }
+    },
+  )
 }
